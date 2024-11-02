@@ -45,6 +45,11 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.projectiles.ProjectileSource;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+import static com.gmail.nossr50.util.AttributeMapper.MAPPED_MAX_HEALTH;
 import static com.gmail.nossr50.util.MobMetadataUtils.*;
 
 public class EntityListener implements Listener {
@@ -55,6 +60,8 @@ public class EntityListener implements Listener {
      * check if a {@link Player} has a {@link Trident} enchanted with "Piercing".
      */
     private final NamespacedKey piercingEnchantment = NamespacedKey.minecraft("piercing");
+    private final static Set<EntityType> TRANSFORMABLE_ENTITIES
+            = Set.of(EntityType.SLIME, EntityType.MAGMA_CUBE);
 
     public EntityListener(final mcMMO pluginRef) {
         this.pluginRef = pluginRef;
@@ -71,6 +78,11 @@ public class EntityListener implements Listener {
                         addMobFlags(livingEntity, transformedEntity);
                     }
                 }
+            }
+
+            // Clear the original slime/magma cubes metadata - it's dead.
+            if (TRANSFORMABLE_ENTITIES.contains(livingEntity.getType())) {
+                mcMMO.getTransientMetadataTools().cleanLivingEntityMetadata(livingEntity);
             }
         }
     }
@@ -400,7 +412,7 @@ public class EntityListener implements Listener {
                     player.sendMessage(ChatColor.GOLD + "(mmodebug start of combat report) EntityDamageByEntityEvent DEBUG Info:");
                     player.sendMessage("You are being damaged by another player in this event");
                     player.sendMessage("Raw Damage: " + entityDamageEvent.getDamage());
-                    player.sendMessage("Your max health: "+player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                    player.sendMessage("Your max health: "+player.getAttribute(MAPPED_MAX_HEALTH).getValue());
                     player.sendMessage("Your current health: "+player.getHealth());
 
                     player.sendMessage(ChatColor.GREEN + "Damage Modifiers (final damage)");
@@ -433,7 +445,7 @@ public class EntityListener implements Listener {
                     }
 
                     player.sendMessage("Final damage: " + entityDamageEvent.getFinalDamage());
-                    player.sendMessage("Target players max health: "+otherPlayer.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                    player.sendMessage("Target players max health: "+otherPlayer.getAttribute(MAPPED_MAX_HEALTH).getValue());
                     player.sendMessage("Target players current health: "+otherPlayer.getHealth());
 
                     if (entityDamageEvent.isCancelled()) {
@@ -652,7 +664,14 @@ public class EntityListener implements Listener {
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEntityDeathLowest(EntityDeathEvent event) {
-        mcMMO.getTransientMetadataTools().cleanLivingEntityMetadata(event.getEntity());
+        LivingEntity entity = event.getEntity();
+
+        // Clear metadata for Slimes/Magma Cubes after transformation events take place, otherwise small spawned slimes will not have any tags
+        if (TRANSFORMABLE_ENTITIES.contains(entity.getType())) {
+            return;
+        }
+
+        mcMMO.getTransientMetadataTools().cleanLivingEntityMetadata(entity);
     }
 
     /**
@@ -756,7 +775,7 @@ public class EntityListener implements Listener {
         if (WorldBlacklist.isWorldBlacklisted(event.getEntity().getWorld()))
             return;
 
-        Entity entity = event.getEntity();
+        final Entity entity = event.getEntity();
 
         if (!(entity instanceof TNTPrimed) || !entity.hasMetadata(MetadataConstants.METADATA_KEY_TRACKED_TNT)) {
             return;
@@ -764,13 +783,14 @@ public class EntityListener implements Listener {
 
         // We can make this assumption because we (should) be the only ones
         // using this exact metadata
-        Player player = pluginRef.getServer().getPlayerExact(entity.getMetadata(MetadataConstants.METADATA_KEY_TRACKED_TNT).get(0).asString());
+        final Player player = pluginRef.getServer().getPlayerExact(
+                entity.getMetadata(MetadataConstants.METADATA_KEY_TRACKED_TNT).get(0).asString());
 
         if (!UserManager.hasPlayerDataKey(player)) {
             return;
         }
 
-        //Profile not loaded
+        // Profile is not loaded
         if (UserManager.getPlayer(player) == null) {
             return;
         }
@@ -781,7 +801,7 @@ public class EntityListener implements Listener {
                 return;
         }
 
-        MiningManager miningManager = UserManager.getPlayer(player).getMiningManager();
+        final MiningManager miningManager = UserManager.getPlayer(player).getMiningManager();
 
         if (miningManager.canUseBiggerBombs()) {
             event.setRadius(miningManager.biggerBombs(event.getRadius()));

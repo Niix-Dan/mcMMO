@@ -138,7 +138,6 @@ public class mcMMO extends JavaPlugin {
     private PotionConfig potionConfig;
     private CustomItemSupportConfig customItemSupportConfig;
     private EnchantmentMapper enchantmentMapper;
-    private AttributeMapper attributeMapper;
 
     private FoliaLib foliaLib;
     private PartyManager partyManager;
@@ -162,6 +161,9 @@ public class mcMMO extends JavaPlugin {
             //Filter out any debug messages (if debug/verbose logging is not enabled)
             getLogger().setFilter(new LogFilter(this));
 
+            //Platform Manager
+            platformManager = new PlatformManager();
+
             //Folia lib plugin instance
             foliaLib = new FoliaLib(this);
             InvalidTickDelayNotifier.disableNotifications = true;
@@ -178,9 +180,6 @@ public class mcMMO extends JavaPlugin {
             //Store this value so other plugins can check it
             isRetroModeEnabled = generalConfig.getIsRetroMode();
 
-            //Platform Manager
-            platformManager = new PlatformManager();
-
             MetadataConstants.MCMMO_METADATA_VALUE = new FixedMetadataValue(this, true);
 
             PluginManager pluginManager = getServer().getPluginManager();
@@ -195,8 +194,6 @@ public class mcMMO extends JavaPlugin {
             materialMapStore = new MaterialMapStore();
             // Init compatibility mappers
             enchantmentMapper = new EnchantmentMapper(this);
-            attributeMapper = new AttributeMapper(this);
-
             loadConfigFiles();
 
             if (!noErrorsInConfigFiles) {
@@ -816,10 +813,6 @@ public class mcMMO extends JavaPlugin {
 
     public EnchantmentMapper getEnchantmentMapper() {
         return enchantmentMapper;
-    }
-
-    public AttributeMapper getAttributeMapper() {
-        return attributeMapper;
     }
 
     public @NotNull FoliaLib getFoliaLib() {
